@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Chat Interface</title>
+    <link rel="stylesheet" href="https://unpkg.com/emoji-picker-element@^1.0.0/dist/emoji-picker.css">
+    <style>
+        /* General Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body, html {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #121212; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+/* Modal (hidden by default) */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enable scrolling if needed */
+    background-color: rgba(0, 0, 0, 0.8); /* Black background with transparency */
+    justify-content: center;
+    align-items: center;
+}
+
+/* Modal Content (image) */
+.modal-content {
+    margin: auto;
+    display: block;
+    max-width: 80%;
+    max-height: 80%;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Close Button */
+#close-modal {
+    position: absolute;
+    top: 20px;
+    right: 35px;
+    color: white;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#close-modal:hover,
+#close-modal:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+/* Container for Input Sections */
+.container {
+    background-color: #1f1f1f; /* Darker background for container */
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    transition: transform 0.3s ease-in-out;
+}
+
+.container:hover {
+    transform: scale(1.02);
+}
+
+/* Username Input Styles */
+.username-input, .code-input {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+    background-color: #2c2c2c; /* Dark background for input sections */
+    padding: 1rem;
+    border-radius: 8px;
+    width: 100%;
+}
+
+/* Input Field Styles */
+input[type="text"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid gray;
+    border-radius: 25px;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    background-color: #333; /* Dark input field */
+    color: #e0e0e0; /* Light text in input field */
+}
+
+h1#room {
+    text-align: center;
+    padding-bottom: 17px;
+}
+
+/* Button Styles */
+button {
+    background-color: #3f51b5; /* Dark blue */
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+button:hover {
+    background-color: #303f9f; /* Darker shade on hover */
+    transform: scale(1.05);
+}
+
+/* Chat Container */
+.chat-container {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+.header {
+    background: linear-gradient(90deg, #3f51b5, #2c387e); /* Dark blue gradient */
+    color: white;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    text-align: center;
+    word-wrap: break-word; /* Allow wrapping for long codes */
+}
+
+
+.messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: #1e1e1e; /* Darker background for messages */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%; /* Make messages container take full width */
+}
+
+.message {
+    padding: 0.75rem;
+    border-radius: 10px;
+    max-width: 75%;
+    position: relative;
+    word-wrap: break-word;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.message:hover {
+    transform: scale(1.02);
+}
+
+.message .username {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.message.sent {
+    background-color: #3f51b5; /* Dark blue */
+    color: white;
+    align-self: flex-end;
+}
+
+.message.received {
+    background-color: #333; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    align-self: flex-start;
+}
+
+.input-area {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.25); /* Dark background */
+    border-top: 1px solid #333;
+    gap: 0.5rem;
+}
+
+.input-area input {
+    border: none;
+    padding: 0.75rem 1rem;
+    flex-grow: 1;
+    border-radius: 25px;
+    background-color: #333; /* Dark input field */
+    color: #e0e0e0; /* Light text */
+}
+
+.emoji-button {
+    background-color: #2c2c2c; /* Dark button */
+    border: none;
+    padding: 0.75rem;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.25rem;
+    transition: background-color 0.3s;
+}
+
+.emoji-button:hover {   
+    background-color: #444; /* Lighter shade on hover */
+}
+
+.input-area button {
+    background-color: #3f51b5; /* Dark blue */
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+}
+
+/* Adjust button position */
+#gen {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 17px;                  
+}
+.system-message {
+    text-align: center;
+    font-style: italic;
+    color: #888;
+    margin: 1rem 0;
+}
+
+/* .end-message {
+    text-align: center;
+    font-size: 1.2rem;
+    color: red;
+    margin-top: 2rem;
+} */
+/* End Message Styles */
+.end-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    font-size: 1.5rem;
+    max-width: 440px; /* Maximum width */
+    width: 90%; /* Ensure it is responsive */
+    text-align: center; /* Center text */
+    word-wrap: break-word; /* Prevent text from breaking out */
+}
+#input-area{
+    position: relative;
+}
+
+/* Hide emoji picker initially */
+emoji-picker {
+    display: none;
+    position: absolute;
+    bottom: 60px; /* Position it above the input area */
+    right: 10px;
+    z-index: 1000;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+#emoji-button{
+    position: absolute;
+    left: 2px;
+    background-color: unset;
+    height: 2rem;
+    bottom: 38%;
+}
+/* Mobile-first styles */
+@media (max-width: 480px) {
+    .username-input, .code-input {
+        padding: 0.5rem;
+        width: 100%;
+        height: auto;
+    }
+    
+    .input-area {
+        flex-direction: column;
+        gap: 0.25rem;
+        display: grid;
+
+
+    }
+
+    .emoji-button, .input-area button {
+        padding: 0.4rem;
+        max-width: 100%;
+    }
+    #emoji-button {
+    position: absolute;
+    left: 8px;
+    background-color: unset;
+    height: 2rem;
+    bottom: 123px;
+}
+}
+
+/* Tablet styles */
+@media (min-width: 481px) and (max-width: 768px) {
+    .username-input, .code-input {
+        padding: 2rem;
+        width: 100%;
+    }
+
+    .input-area {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+
+    .emoji-button, .input-area button {
+        padding: 0.5rem;
+        max-width: 30%;
+    }
+    .end-message {
+        font-size: 1.35rem; /* Slightly larger font size for tablets */
+        padding: 1.75rem; /* Adjust padding for tablets */
+    }
+    .header {
+        font-size: 1.25rem; /* Slightly larger font size for tablets */
+        padding: 2.75rem;
+    }
+    
+    h1#room {
+        font-size: 1.35rem; /* Adjust the room code font size for tablets */
+    }
+    #emoji-button{
+    position: absolute;
+    left: 4px;
+    background-color: unset;
+    height: 2rem;
+    top: 5px;
+}
+}
+@media(max:440px){
+    .end-message {
+        font-size: 0.7rem; /* Adjust font size for smaller screens */
+        padding: 1.5rem; /* Reduce padding for smaller screens */
+    }
+    .header {
+        font-size: 1rem; /* Reduce font size for smaller screens */
+        padding: 4rem;
+        word-break: break-word; /* Break long words */
+    }
+    
+    h1#room {
+        font-size: 1.2rem; /* Ensure the room code scales down on smaller devices */
+        word-break: break-word; /* Break the room code to the next line if needed */
+    }
+}
+
+/* Laptop styles */
+@media (min-width: 769px) {
+    .input-area {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+
+    .emoji-button, .input-area button {
+        padding: 0.75rem;
+        max-width: 100%;
+    }
+    .end-message {
+        font-size: 1.5rem; /* Default font size for laptops */
+        padding: 2rem; /* Default padding */
+    }
+    .header {
+        font-size: 1.4rem; /* Default font size for laptops */
+        padding: 2rem; /* Default padding */
+    }
+    
+    h1#room {
+        font-size: 1.5rem; /* Default font size for the room code */
+    }
+}
+
+        </style>
+</head>
+<body>
+    <div id="username-container" class="username-input">
+        <h1 style="padding-bottom: 17px;">Enter Your Name</h1>
+        <input type="text" id="username" placeholder="Your Name" required>
+        <button id="start-chat">Start Chatting</button>
+    </div>
+
+    <div id="code-container" class="code-input" style="display: none;">
+        <h1 id="room"> Room Code </span></h2>
+       
+        <input type="text" id="join-code" placeholder="Enter code to join">
+        <div id="gen"><button id="generate-code">Generate Code</button>
+            <button id="join-chat">Join Chat</button></div>
+        
+    </div>
+
+    <div id="chat-container" class="chat-container" style="display: none;">
+        <div class="header">
+            <div class="contact-name"></div>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="input-area"  id="input-area" >
+            <button id="emoji-button" class="emoji-button">&#x1F600;</button>
+            <input id="input"  autocomplete="off" placeholder="Type a message..." maxlength="500" / style="padding-left: 40px;">
+            <input type="file" id="image-input" accept="image/*" style="display: none;" /> <!-- Hidden file input -->
+            <button id="image-button">&#x1F4F7;</button> <!-- Camera icon button -->
+            <button id="send-button">Send</button>
+            <emoji-picker></emoji-picker>
+            <button id="leave-button" class="leave-button">Leave</button>
+        </div>
+        <div id="image-modal" class="modal">
+    <span id="close-modal">&times;</span>
+    <img class="modal-content" id="modal-image">
+</div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+    <script>
+      
+      const socket = io();
+let username, roomCode, clientId;
+
+// Handling name input and chat start
+document.getElementById('start-chat').addEventListener('click', () => {
+    username = document.getElementById('username').value.trim();
+    if (username) {
+        document.getElementById('username-container').style.display = 'none';
+        document.getElementById('code-container').style.display = 'block';
+    }
+});
+
+// Generate Room Code
+document.getElementById('generate-code').addEventListener('click', () => {
+    roomCode = Math.random().toString(36).substr(2, 8);
+    console.log('Generated Room Code:', roomCode);
+    socket.emit('create room', roomCode);
+    // Optionally delay switching to chat
+    // 2-second delay
+});
+
+// Join Existing Chat Room
+document.getElementById('join-chat').addEventListener('click', () => {
+    roomCode = document.getElementById('join-code').value.trim();
+    if (roomCode) {
+        socket.emit('join room', roomCode, username);
+    }
+});
+
+// Switch to Chat Window
+function switchToChat() {
+    document.getElementById('code-container').style.display = 'none';
+    document.getElementById('chat-container').style.display = 'flex';
+    document.querySelector('.header .contact-name').textContent = `Chat Room: ${roomCode}`;
+    clientId = socket.id;
+}
+
+// Handle Incoming Chat Messages
+const messages = document.getElementById('messages');
+
+socket.on('joined room', (code) => {
+    roomCode = code;
+    switchToChat();
+});
+
+socket.on('chat message', (data) => {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    messageElement.classList.add(data.senderId === clientId ? 'sent' : 'received');
+    messageElement.innerHTML = `<div class="username">${data.username}</div><p>${data.message}</p><small>${data.timestamp}</small>`;
+    messages.appendChild(messageElement);
+    messages.scrollTop = messages.scrollHeight;
+});
+
+socket.on('image message', (data) => {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    messageElement.classList.add(data.senderId === clientId ? 'sent' : 'received');
+    messageElement.innerHTML = `<div class="username">${data.username}</div><img src="${data.image}" style="max-width: 100%; border-radius: 10px;"><small>${data.timestamp}</small>`;
+    messages.appendChild(messageElement);
+    messages.scrollTop = messages.scrollHeight;
+});
+
+// document.getElementById('leave-button').addEventListener('click', () => {
+//     document.getElementById('chat-container').style.display = 'none';
+//     const endMessage = document.createElement('div');
+//     endMessage.classList.add('end-message');
+//     endMessage.textContent = 'Chat has ended';
+//     document.body.appendChild(endMessage);
+// });
+// Emit a 'user left' event when clicking 'Leave' button
+document.getElementById('leave-button').addEventListener('click', () => {
+    // Display a leave message
+    const leaveMessage = document.createElement('div');
+    leaveMessage.classList.add('message', 'system-message');
+    leaveMessage.innerHTML = '<em>You have left the chat. Chat will be deleted shortly.</em>';
+    document.getElementById('messages').appendChild(leaveMessage);
+    
+    // Scroll to the bottom to show the leave message
+    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    
+    // Emit 'user left' event to inform others
+    socket.emit('user left', { username: username, roomCode: roomCode });
+
+    // After showing the message, delete the chat
+    setTimeout(() => {
+        // Delete the chat UI or clear chat container
+        document.getElementById('messages').innerHTML = ''; // Clear the messages
+        const endMessage = document.createElement('div');
+        endMessage.classList.add('end-message');
+        endMessage.textContent = 'Chat has ended. Please refresh to start a new chat.';
+        document.body.appendChild(endMessage);
+
+        // Optionally reload or reset the chat UI
+        setTimeout(() => {
+            window.location.reload(); // Reload the page after a delay (optional)
+        }, 3000); // Delay for 3 seconds before resetting the chat
+    }, 2000); // Delay for 2 seconds before deleting the chat messages
+});
+
+// Listen for 'user left' event and display leave message for other users
+socket.on('user left', (data) => {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message', 'system-message');
+    messageElement.innerHTML = `<em>${data.username} has left the chat</em>`;
+    document.getElementById('messages').appendChild(messageElement);
+    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+});
+
+
+// Send Message
+document.getElementById('send-button').addEventListener('click', () => {
+    const messageInput = document.getElementById('input');
+    const message = messageInput.value.trim();
+    if (message) {
+        const messageData = {
+            username: username,
+            message: message,
+            timestamp: new Date().toLocaleTimeString(),
+            roomCode: roomCode,
+            senderId: clientId
+        };
+        socket.emit('chat message', messageData);
+        messageInput.value = '';
+    }
+});
+
+// Handle Image Upload
+document.getElementById('image-button').addEventListener('click', () => {
+    document.getElementById('image-input').click();
+});
+
+document.getElementById('image-input').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const imageData = {
+                username: username,
+                image: reader.result,
+                timestamp: new Date().toLocaleTimeString(),
+                roomCode: roomCode,
+                senderId: clientId
+            };          
+            socket.emit('image message', imageData);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Emoji Picker
+const emojiButton = document.getElementById('emoji-button');
+const emojiPicker = document.querySelector('emoji-picker');
+
+emojiButton.addEventListener('click', (event) => {
+    event.stopPropagation(); // Prevent the document click event from firing
+    emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+});
+
+emojiPicker.addEventListener('emoji-click', (event) => {    
+    const input = document.getElementById('input');
+    input.value += event.detail.unicode;
+});
+document.getElementById('input').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Prevent default Enter key behavior
+        sendMessage();
+        emojiPicker.style.display = 'none'; // Close the emoji picker after sending the message
+    }
+});
+
+
+
+
+// Function to send a message
+function sendMessage() {
+    const messageInput = document.getElementById('input');
+    const message = messageInput.value.trim();
+    if (message) {
+        const messageData = {
+            username: username,
+            message: message,
+            timestamp: new Date().toLocaleTimeString(),
+            roomCode: roomCode,
+            senderId: clientId
+        };
+        socket.emit('chat message', messageData);
+        messageInput.value = '';
+    }
+}
+
+
+
+// Event listener for the Enter key
+document.getElementById('input').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Prevent default Enter key behavior
+        sendMessage();
+         
+    }
+});
+// Close emoji picker when clicking outside                                                                 
+document.addEventListener('click', (event) => {
+    if (!emojiPicker.contains(event.target) && event.target !== emojiButton) {
+        emojiPicker.style.display = 'none';
+    }
+});
+// Get the modal, image and close button
+const modal = document.getElementById("image-modal");
+const modalImg = document.getElementById("modal-image");
+const closeModal = document.getElementById("close-modal");
+
+// Add event listeners to chat images
+document.addEventListener('click', function(event) {
+    if (event.target.tagName === 'IMG' && event.target.closest('.message')) {
+        // Show modal and set the clicked image as the modal content
+        modal.style.display = "flex";
+        modalImg.src = event.target.src;
+    }
+});
+
+// Close modal when the user clicks on the close button
+closeModal.addEventListener('click', () => {
+    modal.style.display = "none";
+});
+
+// Close modal when clicking outside the image
+window.addEventListener('click', (event) => {
+    if (event.target === modal) {
+        modal.style.display = "none";
+    }
+});
+
+
+    </script>
+</body>
+</html>

@@ -14,6 +14,27 @@ app.get('/', (req, res) => {
 
 const chatRooms = {};
 
+// Add these variables at the top of your script
+let isInCall = false;
+let hasPermissions = false;
+
+// Function to check and request permissions
+async function checkAndRequestPermissions() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: true 
+        });
+        stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+        hasPermissions = true;
+        return true;
+    } catch (error) {
+        console.error('Permission error:', error);
+        alert('Please allow camera and microphone access to make video calls.');
+        return false;
+    }
+}
+
 // Handle socket connections
 io.on('connection', (socket) => {
     console.log('A user connected');

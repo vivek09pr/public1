@@ -5,416 +5,832 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Responsive Chat Interface</title>
     <link rel="stylesheet" href="https://unpkg.com/emoji-picker-element@^1.0.0/dist/emoji-picker.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         /* General Reset */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
 
+        :root {
+            --bg-color: #f0f4f8;
+            --text-color: #2c3e50;
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --message-sent: #3498db;
+            --message-received: #e8ebed;
+        }
 
-body, html {
-    height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #121212; /* Dark background */
-    color: #e0e0e0; /* Light text */
+        .dark-mode {
+            --bg-color: #1a202c;
+            --text-color: #e2e8f0;
+            --primary-color: #4299e1;
+            --secondary-color: #3182ce;
+            --message-sent: #4299e1;
+            --message-received: #2d3748;
+        }
+
+        body, html {
+            height: 100vh;
+            width: 100vw;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Modal (hidden by default) */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Modal Content (image) */
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            animation: zoomIn 0.3s ease-out;
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* Close Button */
+        #close-modal {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        #close-modal:hover,
+        #close-modal:focus {
+            color: #bbb;
+            text-decoration: none;
+        }
+
+        /* Container for Input Sections */
+        .container {
+            background-color: var(--bg-color);
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 90vw;
+            max-width: 400px;
+            text-align: center;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Username Input Styles */
+        .username-input, .code-input {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+            background-color: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        /* Input Field Styles */
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--primary-color);
+            border-radius: 25px;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+            outline: none;
+        }
+
+        h1#room {
+            text-align: center;
+            padding-bottom: 17px;
+            font-size: 1.8rem;
+            color: var(--primary-color);
+        }
+
+        /* Button Styles */
+        button {
+            background-color: var(--primary-color);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+
+        /* Chat Container */
+        .chat-container {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            margin: auto;
+            background-color: var(--bg-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .header {
+/*             background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            text-align: center;
+            word-wrap: break-word; */
+            background: var(--container-bg);
+    backdrop-filter: blur(10px);
+    color: var(--text-color);
+    padding: 1.25rem;
     display: flex;
+    align-items: center;
     justify-content: center;
-    align-items: center;
-    padding: 1rem;
-}
-/* Modal (hidden by default) */
-.modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1000; /* Sit on top */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto; /* Enable scrolling if needed */
-    background-color: rgba(0, 0, 0, 0.8); /* Black background with transparency */
-    justify-content: center;
-    align-items: center;
-}
-
-/* Modal Content (image) */
-.modal-content {
-    margin: auto;
-    display: block;
-    max-width: 80%;
-    max-height: 80%;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-}
-
-/* Close Button */
-#close-modal {
-    position: absolute;
-    top: 20px;
-    right: 35px;
-    color: white;
-    font-size: 40px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-#close-modal:hover,
-#close-modal:focus {
-    color: #bbb;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-
-/* Container for Input Sections */
-.container {
-    background-color: #1f1f1f; /* Darker background for container */
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    padding: 2rem;
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-    transition: transform 0.3s ease-in-out;
-}
-
-.container:hover {
-    transform: scale(1.02);
-}
-
-/* Username Input Styles */
-.username-input, .code-input {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 2rem;
-    background-color: #2c2c2c; /* Dark background for input sections */
-    padding: 1rem;
-    border-radius: 8px;
-    width: 100%;
-}
-
-/* Input Field Styles */
-input[type="text"] {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid gray;
-    border-radius: 25px;
-    margin-bottom: 1rem;
-    font-size: 1rem;
-    background-color: #333; /* Dark input field */
-    color: #e0e0e0; /* Light text in input field */
-}
-
-h1#room {
-    text-align: center;
-    padding-bottom: 17px;
-}
-
-/* Button Styles */
-button {
-    background-color: #3f51b5; /* Dark blue */
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 25px;
-    color: white;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.3s, transform 0.2s;
-}
-
-button:hover {
-    background-color: #303f9f; /* Darker shade on hover */
-    transform: scale(1.05);
-}
-
-/* Chat Container */
-.chat-container {
-    display: none;
-    flex-direction: column;
-    height: 100vh;
-    width: 100vw;
-}
-
-.header {
-    background: linear-gradient(90deg, #3f51b5, #2c387e); /* Dark blue gradient */
-    color: white;
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.6rem;
-    text-align: center;
-    word-wrap: break-word; /* Allow wrapping for long codes */
-}
-
-
-.messages {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 1rem;
-    background-color: #1e1e1e; /* Darker background for messages */
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    width: 100%; /* Make messages container take full width */
-}
-
-.message {
-    padding: 0.75rem;
-    border-radius: 10px;
-    max-width: 75%;
-    position: relative;
-    word-wrap: break-word;
-    transition: background-color 0.3s, transform 0.2s;
-}
-
-.message:hover {
-    transform: scale(1.02);
-}
-
-.message .username {
-    font-weight: bold;
-    margin-bottom: 0.25rem;
-}
-
-.message.sent {
-    background-color: #3f51b5; /* Dark blue */
-    color: white;
-    align-self: flex-end;
-}
-
-.message.received {
-    background-color: #333; /* Dark background */
-    color: #e0e0e0; /* Light text */
-    align-self: flex-start;
-}
-
-.input-area {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.25); /* Dark background */
-    border-top: 1px solid #333;
-    gap: 0.5rem;
-}
-
-.input-area input {
-    border: none;
-    padding: 0.75rem 1rem;
-    flex-grow: 1;
-    border-radius: 25px;
-    background-color: #333; /* Dark input field */
-    color: #e0e0e0; /* Light text */
-}
-
-.emoji-button {
-    background-color: #2c2c2c; /* Dark button */
-    border: none;
-    padding: 0.75rem;
-    border-radius: 50%;
-    cursor: pointer;
     font-size: 1.25rem;
-    transition: background-color 0.3s;
-}
-
-.emoji-button:hover {   
-    background-color: #444; /* Lighter shade on hover */
-}
-
-.input-area button {
-    background-color: #3f51b5; /* Dark blue */
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 25px;
-    color: white;
-    cursor: pointer;
-}
-
-/* Adjust button position */
-#gen {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 17px;                  
-}
-.system-message {
-    text-align: center;
-    font-style: italic;
-    color: #888;
-    margin: 1rem 0;
-}
-
-/* .end-message {
-    text-align: center;
-    font-size: 1.2rem;
-    color: red;
-    margin-top: 2rem;
-} */
-/* End Message Styles */
-.end-message {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #1e1e1e;
-    color: #e0e0e0;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    font-size: 1.5rem;
-    max-width: 440px; /* Maximum width */
-    width: 90%; /* Ensure it is responsive */
-    text-align: center; /* Center text */
-    word-wrap: break-word; /* Prevent text from breaking out */
-}
-#input-area{
+    font-weight: 500;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     position: relative;
-}
+    z-index: 10;
+        }
 
-/* Hide emoji picker initially */
-emoji-picker {
-    display: none;
-    position: absolute;
-    bottom: 60px; /* Position it above the input area */
-    right: 10px;
-    z-index: 1000;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-#emoji-button{
-    position: absolute;
-    left: 2px;
-    background-color: unset;
-    height: 2rem;
-    bottom: 38%;
-}
-/* Mobile-first styles */
-@media (max-width: 480px) {
-    .username-input, .code-input {
-        padding: 0.5rem;
-        width: 100%;
-        height: auto;
-    }
-    
-    .input-area {
-        flex-direction: column;
-        gap: 0.25rem;
-        display: grid;
+        .messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+        }
 
+        .message {
+            padding: 0.75rem 1rem;
+            border-radius: 15px;
+            max-width: 75%;
+            position: relative;
+            word-wrap: break-word;
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: fadeIn 0.3s ease-out;
+        }
 
-    }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-    .emoji-button, .input-area button {
-        padding: 0.4rem;
-        max-width: 100%;
-    }
-    #emoji-button {
-    position: absolute;
-    left: 8px;
-    background-color: unset;
-    height: 2rem;
-    bottom: 123px;
-}
-}
+        .message:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
 
-/* Tablet styles */
-@media (min-width: 481px) and (max-width: 768px) {
-    .username-input, .code-input {
-        padding: 2rem;
-        width: 100%;
-    }
+        .message .username {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
 
-    .input-area {
-        flex-direction: row;
-        gap: 0.5rem;
-    }
+        .message.sent {
+            background-color: var(--message-sent);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
 
-    .emoji-button, .input-area button {
-        padding: 0.5rem;
-        max-width: 30%;
-    }
-    .end-message {
-        font-size: 1.35rem; /* Slightly larger font size for tablets */
-        padding: 1.75rem; /* Adjust padding for tablets */
-    }
-    .header {
-        font-size: 1.25rem; /* Slightly larger font size for tablets */
-        padding: 2.75rem;
-    }
-    
-    h1#room {
-        font-size: 1.35rem; /* Adjust the room code font size for tablets */
-    }
-    #emoji-button{
-    position: absolute;
-    left: 4px;
-    background-color: unset;
-    height: 2rem;
-    top: 5px;
-}
-}
-@media(max:440px){
-    .end-message {
-        font-size: 0.7rem; /* Adjust font size for smaller screens */
-        padding: 1.5rem; /* Reduce padding for smaller screens */
-    }
-    .header {
-        font-size: 1rem; /* Reduce font size for smaller screens */
-        padding: 4rem;
-        word-break: break-word; /* Break long words */
-    }
-    
-    h1#room {
-        font-size: 1.2rem; /* Ensure the room code scales down on smaller devices */
-        word-break: break-word; /* Break the room code to the next line if needed */
-    }
-}
+        .message.received {
+            background-color: var(--message-received);
+            color: var(--text-color);
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
 
-/* Laptop styles */
-@media (min-width: 769px) {
-    .input-area {
-        flex-direction: row;
-        gap: 0.5rem;
-    }
+        .input-area {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-color);
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            gap: 0.5rem;
+            position: relative;
+        }
 
-    .emoji-button, .input-area button {
-        padding: 0.75rem;
-        max-width: 100%;
-    }
-    .end-message {
-        font-size: 1.5rem; /* Default font size for laptops */
-        padding: 2rem; /* Default padding */
-    }
-    .header {
-        font-size: 1.4rem; /* Default font size for laptops */
-        padding: 2rem; /* Default padding */
-    }
-    
-    h1#room {
-        font-size: 1.5rem; /* Default font size for the room code */
-    }
-}
+        .input-area input {
+            border: none;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            flex-grow: 1;
+            border-radius: 25px;
+            background-color: var(--message-received);
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
 
-        </style>
+        .input-area input:focus {
+            background-color: var(--bg-color);
+            outline: none;
+        }
+
+        .emoji-button {
+            background-color: transparent;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: background-color 0.3s, transform 0.2s;
+            position: absolute;
+            left: 0.5rem;
+            top: 48%;
+            transform: translateY(-50%);
+        }
+
+        .emoji-button:hover {   
+            background-color: rgba(52, 152, 219, 0.2);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .system-message {
+            text-align: center;
+            font-style: italic;
+            color: var(--text-color);
+            opacity: 0.7;
+            margin: 1rem 0;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .end-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+            font-size: 1.5rem;
+            max-width: 90vw;
+            width: 440px;
+            text-align: center;
+            word-wrap: break-word;
+            animation: fadeInScale 0.5s ease-out;
+        }
+
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        #input-area {
+            position: relative;
+        }
+
+        emoji-picker {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            z-index: 1000;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Plus Icon */
+        .plus-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            margin-left: 10px;
+        }
+
+        .plus-icon::before {
+            content: "+";
+            font-size: 24px;
+            color: white;
+            font-weight: bold;
+            padding-bottom: 4px;
+        }
+
+        .plus-icon.clicked {
+            background-color: var(--secondary-color);
+            transform: rotate(45deg);
+        }
+
+        #options-list {
+            display: none;
+            list-style-type: none;
+            padding: 0.5rem;
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background-color: var(--bg-color);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        #options-list li {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            color: var(--text-color);
+            transition: background-color 0.3s;
+            border-radius: 8px;
+        }
+
+        #options-list li:hover {
+            background-color: var(--message-received);
+        }
+
+        #options-list button {
+            width: 100%;
+            text-align: left;
+            background-color: transparent;
+            border: none;
+            color: var(--text-color);
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        #options-list button:hover {
+            background-color: rgba(52, 152, 219, 0.2);
+        }
+
+        /* Toggle switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+         
+        /* Responsive Design */
+
+        @media (max-width: 388px) { 
+            
+        }
+        @media (max-width: 768px) {
+            .username-input, .code-input {
+                padding: 1rem;
+            }
+
+            .input-area {
+                flex-wrap: nowrap;
+                gap: 0.5rem;
+            }
+
+            .emoji-button, .input-area button {
+                padding: 0.7rem;
+            }
+
+            .input-area input {
+                padding-left: 2.5rem;
+                flex-grow: 1;
+                width: auto;
+            }
+
+            .plus-icon {
+                order: 1;
+                margin-left: auto;
+            }
+
+            #options-list {
+                width: 100%;
+                left: 0;
+                right: 0;
+            }
+
+            .chat-container {
+                height: 100%;
+                border-radius: 0;
+                width: 100vw;
+            }
+
+            .message {
+                max-width: 85%;
+            }
+
+            .header {
+                font-size: 1.4rem;
+                padding: 0.75rem;
+                display: none;
+            }
+
+            h1#room {
+                font-size: 1.3rem;
+            }
+
+            .messages {
+                height: calc(100vh - 120px);
+                margin-bottom: 40px;
+            }
+
+            .input-area {
+                position: fixed;
+                bottom: 39px;
+                left: 0;
+                right: 0;
+                background-color: var(--bg-color);
+            }
+        }
+
+        /* Video Call Styles */
+        .video-call-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #1a1a1a;
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-grid {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 100px);
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .video-container {
+            position: relative;
+            flex: 1;
+            background-color: #2a2a2a;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+            transform: scale(-1, 1); /* Mirror effect for selfie view */
+        }
+
+        .video-container.local-video-container {
+            position: absolute;
+            width: 280px;
+            height: 158px; /* 16:9 aspect ratio */
+            right: 20px;
+            top: 20px;
+            z-index: 2;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .video-container.local-video-container:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .call-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 3;
+        }
+
+        .call-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(5px);
+        }
+
+        .call-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-camera, .toggle-audio {
+            background-color: rgba(33, 150, 243, 0.9);
+        }
+
+        .camera-off, .audio-off {
+            background-color: rgba(102, 102, 102, 0.9);
+        }
+
+        .end-call {
+            background-color: rgba(244, 67, 54, 0.9);
+            width: 60px;
+            height: 60px;
+        }
+
+        .end-call:hover {
+            background-color: #d32f2f;
+            transform: scale(1.1);
+        }
+
+        .call-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+        }
+
+        .participant-name {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 16px;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+            z-index: 2;
+        }
+
+        @media (max-width: 768px) {
+            .video-grid {
+                flex-direction: column;
+                height: calc(100vh - 80px);
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .video-container.local-video-container {
+                width: 120px;
+                height: 68px;
+                right: 10px;
+                top: 10px;
+            }
+
+            .call-controls {
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .call-button {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+
+            .end-call {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        /* Call Notification Styles */
+        .call-request {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(33, 33, 33, 0.95);
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            z-index: 1001;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 300px;
+            display: none;
+            animation: callNotificationIn 0.3s ease-out;
+        }
+
+        @keyframes callNotificationIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -40%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .call-request h3 {
+            color: white;
+            margin-bottom: 25px;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .call-request-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .call-request-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .accept-call {
+            background-color: #4CAF50;
+        }
+
+        .accept-call:hover {
+            background-color: #43A047;
+            transform: scale(1.1);
+        }
+
+        .reject-call {
+            background-color: #f44336;
+        }
+
+        .reject-call:hover {
+            background-color: #E53935;
+            transform: scale(1.1);
+        }
+
+        .caller-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #2196F3;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .call-request {
+                min-width: 280px;
+                padding: 20px;
+            }
+
+            .call-request-button {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+
+            .caller-avatar {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div id="username-container" class="username-input">
+    <div id="username-container" class="username-input container">
         <h1 style="padding-bottom: 17px;">Enter Your Name</h1>
         <input type="text" id="username" placeholder="Your Name" required>
         <button id="start-chat">Start Chatting</button>
     </div>
 
-    <div id="code-container" class="code-input" style="display: none;">
-        <h1 id="room"> Room Code </span></h2>
-       
+    <div id="code-container" class="code-input container" style="display: none;">
+        <h1 id="room">Room Code</h1>
         <input type="text" id="join-code" placeholder="Enter code to join">
-        <div id="gen"><button id="generate-code">Generate Code</button>
-            <button id="join-chat">Join Chat</button></div>
-        
+        <div id="gen">
+            <button id="generate-code">Generate Code</button>
+            <button id="join-chat">Join Chat</button>
+        </div>
     </div>
 
     <div id="chat-container" class="chat-container" style="display: none;">
@@ -422,127 +838,181 @@ emoji-picker {
             <div class="contact-name"></div>
         </div>
         <div class="messages" id="messages"></div>
-        <div class="input-area"  id="input-area" >
+        <div class="input-area" id="input-area">
             <button id="emoji-button" class="emoji-button">&#x1F600;</button>
-            <input id="input"  autocomplete="off" placeholder="Type a message..." maxlength="500" / style="padding-left: 40px;">
-            <input type="file" id="image-input" accept="image/*" style="display: none;" /> <!-- Hidden file input -->
-            <button id="image-button">&#x1F4F7;</button> <!-- Camera icon button -->
-            <button id="send-button">Send</button>
+            <input id="input" autocomplete="off" placeholder="Type a message..." maxlength="500">
+            <input type="file" id="image-input" accept="image/*" style="display: none;">
+            <div class="plus-icon" id="plus-icon"></div>
+            <ul id="options-list">
+                <li><button id="image-button">&#x1F4F7; Image</button></li>
+                <li><button id="video-call-button">&#x1F4F9; Video Call</button></li>
+                <li><button id="send-button">&#x27A4; Send</button></li>
+                <li><button id="leave-button" class="leave-button">&#x1F6AA; Leave</button></li>
+                <li><button id="toggle-mode">&#x1F319; Toggle Dark Mode</button></li>
+                <li><div id="room-code"></div></li>
+            </ul>
             <emoji-picker></emoji-picker>
-            <button id="leave-button" class="leave-button">Leave</button>
         </div>
-        <div id="image-modal" class="modal">
-    <span id="close-modal">&times;</span>
-    <img class="modal-content" id="modal-image">
-</div>
+    </div>
+
+    <div id="image-modal" class="modal">
+        <span id="close-modal">&times;</span>
+        <img class="modal-content" id="modal-image">
+    </div>
+
+    <!-- Video Call UI -->
+    <div id="video-call-container" class="video-call-container">
+        <div class="call-status">Connected</div>
+        <div class="video-grid">
+            <div class="video-container remote-video-container">
+                <video id="remote-video" autoplay></video>
+                <div class="participant-name" id="remote-user-name"></div>
+            </div>
+            <div class="video-container local-video-container">
+                <video id="local-video" autoplay muted></video>
+                <div class="participant-name">You</div>
+            </div>
+        </div>
+        <div class="call-controls">
+            <button id="toggle-camera" class="call-button toggle-camera" title="Toggle Camera">
+                <i class="fas fa-video"></i>
+            </button>
+            <button id="toggle-audio" class="call-button toggle-audio" title="Toggle Microphone">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button id="end-call" class="call-button end-call" title="End Call">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="call-request" class="call-request">
+        <div class="caller-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <h3 id="caller-name">Incoming call...</h3>
+        <div class="call-request-buttons">
+            <button id="accept-call" class="call-request-button accept-call" title="Accept Call">
+                <i class="fas fa-phone"></i>
+            </button>
+            <button id="reject-call" class="call-request-button reject-call" title="Reject Call">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
     </div>
 
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script>
-      
-      const socket = io();
-let username, roomCode, clientId;
+        const socket = io();
+        let username, roomCode, clientId;
 
-// Handling name input and chat start
-document.getElementById('start-chat').addEventListener('click', () => {
-    username = document.getElementById('username').value.trim();
-    if (username) {
-        document.getElementById('username-container').style.display = 'none';
-        document.getElementById('code-container').style.display = 'block';
-    }
-});
+        // Dark mode toggle
+        const toggleModeButton = document.getElementById('toggle-mode');
+        toggleModeButton.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+        });
 
-// Generate Room Code
-document.getElementById('generate-code').addEventListener('click', () => {
-    roomCode = Math.random().toString(36).substr(2, 8);
-    console.log('Generated Room Code:', roomCode);
-    socket.emit('create room', roomCode);
-    // Optionally delay switching to chat
-    // 2-second delay
-});
+        // Handling name input and chat start
+        document.getElementById('start-chat').addEventListener('click', () => {
+            username = document.getElementById('username').value.trim();
+            if (username) {
+                document.getElementById('username-container').style.display = 'none';
+                document.getElementById('code-container').style.display = 'block';
+            }
+        });
 
-// Join Existing Chat Room
-document.getElementById('join-chat').addEventListener('click', () => {
-    roomCode = document.getElementById('join-code').value.trim();
-    if (roomCode) {
-        socket.emit('join room', roomCode, username);
-    }
-});
+        // Generate Room Code
+        document.getElementById('generate-code').addEventListener('click', () => {
+            roomCode = Math.random().toString(36).substr(2, 8);
+            console.log('Generated Room Code:', roomCode);
+            socket.emit('create room', roomCode);
+        });
 
-// Switch to Chat Window
-function switchToChat() {
-    document.getElementById('code-container').style.display = 'none';
-    document.getElementById('chat-container').style.display = 'flex';
-    document.querySelector('.header .contact-name').textContent = `Chat Room: ${roomCode}`;
-    clientId = socket.id;
-}
+        // Join Existing Chat Room
+        document.getElementById('join-chat').addEventListener('click', () => {
+            roomCode = document.getElementById('join-code').value.trim();
+            if (roomCode) {
+                socket.emit('join room', roomCode, username);
+            }
+        });
 
-// Handle Incoming Chat Messages
-const messages = document.getElementById('messages');
+        // Plus Icon and Options List
+        const plusIcon = document.getElementById('plus-icon');
+        const optionsList = document.getElementById('options-list');
 
-socket.on('joined room', (code) => {
-    roomCode = code;
-    switchToChat();
-});
+        plusIcon.addEventListener('click', function() {
+            plusIcon.classList.toggle('clicked');
+            optionsList.style.display = optionsList.style.display === 'block' ? 'none' : 'block';
+        });
 
-socket.on('chat message', (data) => {
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-    messageElement.classList.add(data.senderId === clientId ? 'sent' : 'received');
-    messageElement.innerHTML = `<div class="username">${data.username}</div><p>${data.message}</p><small>${data.timestamp}</small>`;
-    messages.appendChild(messageElement);
-    messages.scrollTop = messages.scrollHeight;
-});
+        // Switch to Chat Window
+        function switchToChat() {
+            document.getElementById('code-container').style.display = 'none';
+            document.getElementById('chat-container').style.display = 'flex';
+            document.querySelector('.header .contact-name').textContent = `Chat Room:${roomCode}`;
+            document.getElementById('room-code').textContent = `Room Code: ${roomCode}`;
+            clientId = socket.id;
+        }
 
-socket.on('image message', (data) => {
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-    messageElement.classList.add(data.senderId === clientId ? 'sent' : 'received');
-    messageElement.innerHTML = `<div class="username">${data.username}</div><img src="${data.image}" style="max-width: 100%; border-radius: 10px;"><small>${data.timestamp}</small>`;
-    messages.appendChild(messageElement);
-    messages.scrollTop = messages.scrollHeight;
-});
+        // Handle Incoming Chat Messages
+        const messages = document.getElementById('messages');
 
-// document.getElementById('leave-button').addEventListener('click', () => {
-//     document.getElementById('chat-container').style.display = 'none';
-//     const endMessage = document.createElement('div');
-//     endMessage.classList.add('end-message');
-//     endMessage.textContent = 'Chat has ended';
-//     document.body.appendChild(endMessage);
-// });
-// Emit a 'user left' event when clicking 'Leave' button
-document.getElementById('leave-button').addEventListener('click', () => {
-    // Display a leave message
-    const leaveMessage = document.createElement('div');
-    leaveMessage.classList.add('message', 'system-message');
-    leaveMessage.innerHTML = '<em>You have left the chat. Chat will be deleted shortly.</em>';
-    document.getElementById('messages').appendChild(leaveMessage);
-    
-    // Scroll to the bottom to show the leave message
-    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    
-    // Emit 'user left' event to inform others
-    socket.emit('user left', { username: username, roomCode: roomCode });
+        socket.on('joined room', (code) => {
+            roomCode = code;
+            switchToChat();
+        });
 
-    // After showing the message, delete the chat
-    setTimeout(() => {
-        // Delete the chat UI or clear chat container
-        document.getElementById('messages').innerHTML = ''; // Clear the messages
-        const endMessage = document.createElement('div');
-        endMessage.classList.add('end-message');
-        endMessage.textContent = 'Chat has ended. Please refresh to start a new chat.';
-        document.body.appendChild(endMessage);
+        socket.on('chat message', (data) => {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(data.senderId === clientId ? 'sent' : 'received');
+            messageElement.innerHTML = `
+                <div class="username">${data.username}</div>
+                <p>${data.message}</p>
+                <small>${data.timestamp}</small>
+            `;
+            messages.appendChild(messageElement);
+            messages.scrollTop = messages.scrollHeight;
+        });
 
-        // Optionally reload or reset the chat UI
-        setTimeout(() => {
-            window.location.reload(); // Reload the page after a delay (optional)
-        }, 3000); // Delay for 3 seconds before resetting the chat
-    }, 2000); // Delay for 2 seconds before deleting the chat messages
-});
+        socket.on('image message', (data) => {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(data.senderId === clientId ? 'sent' : 'received');
+            messageElement.innerHTML = `
+                <div class="username">${data.username}</div>
+                <img src="${data.image}" style="max-width: 100%; border-radius: 10px; cursor: pointer;">
+                <small>${data.timestamp}</small>
+            `;
+            messages.appendChild(messageElement);
+            messages.scrollTop = messages.scrollHeight;
+        });
 
-// Listen for 'user left' event and display leave message for other users
-socket.on('user left', (data) => {
+        // Leave Chat
+        document.getElementById('leave-button').addEventListener('click', () => {
+            const leaveMessage = document.createElement('div');
+            leaveMessage.classList.add('message', 'system-message');
+            leaveMessage.innerHTML = '<em>You have left the chat. Chat will be deleted shortly.</em>';
+            messages.appendChild(leaveMessage);
+            messages.scrollTop = messages.scrollHeight;
+            
+            socket.emit('user left', { username: username, roomCode: roomCode });
+
+            setTimeout(() => {
+                messages.innerHTML = '';
+                const endMessage = document.createElement('div');
+                endMessage.classList.add('end-message');
+                endMessage.textContent = 'Chat has ended. Please refresh to start a new chat.';
+                document.body.appendChild(endMessage);
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            }, 2000);
+        });
+
+        socket.on('user left', (data) => {
     const messageElement = document.createElement('div');
     messageElement.classList.add('message', 'system-message');
     messageElement.innerHTML = `<em>${data.username} has left the chat</em>`;
@@ -551,130 +1021,457 @@ socket.on('user left', (data) => {
 });
 
 
-// Send Message
-document.getElementById('send-button').addEventListener('click', () => {
-    const messageInput = document.getElementById('input');
-    const message = messageInput.value.trim();
-    if (message) {
-        const messageData = {
-            username: username,
-            message: message,
-            timestamp: new Date().toLocaleTimeString(),
-            roomCode: roomCode,
-            senderId: clientId
+        // socket.on('user left', (data) => {
+        //     const messageElement = document.createElement('div');
+        //     messageElement.classList.add('message', 'system-message');
+        //     messageElement.innerHTML = `<em>${data.username} has left the chat</em>`;
+        //     messages.appendChild(messageElement);
+        //     messages.scrollTop = messages.scrollHeight;
+        // });
+
+        // Send Message
+        function sendMessage() {
+            const messageInput = document.getElementById('input');
+            const message = messageInput.value.trim();
+            if (message) {
+                const messageData = {
+                    username: username,
+                    message: message,
+                    timestamp: new Date().toLocaleTimeString(),
+                    roomCode: roomCode,
+                    senderId: clientId
+                };
+                socket.emit('chat message', messageData);
+                messageInput.value = '';
+            }
+        }
+
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+
+        // Handle Image Upload
+        document.getElementById('image-button').addEventListener('click', () => {
+            document.getElementById('image-input').click();
+        });
+
+        document.getElementById('image-input').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const imageData = {
+                        username: username,
+                        image: reader.result,
+                        timestamp: new Date().toLocaleTimeString(),
+                        roomCode: roomCode,
+                        senderId: clientId
+                    };          
+                    socket.emit('image message', imageData);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Emoji Picker
+        const emojiButton = document.getElementById('emoji-button');
+        const emojiPicker = document.querySelector('emoji-picker');
+
+        emojiButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+        });
+
+        emojiPicker.addEventListener('emoji-click', (event) => {    
+            const input = document.getElementById('input');
+            input.value += event.detail.unicode;
+        });
+
+        // Event listener for the Enter key
+        document.getElementById('input').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+                emojiPicker.style.display = 'none';
+            }
+        });
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!emojiPicker.contains(event.target) && event.target !== emojiButton) {
+                emojiPicker.style.display = 'none';
+            }
+        });
+
+        // Image Modal
+        const modal = document.getElementById("image-modal");
+        const modalImg = document.getElementById("modal-image");
+        const closeModal = document.getElementById("close-modal");
+
+        document.addEventListener('click', function(event) {
+            if (event.target.tagName === 'IMG' && event.target.closest('.message')) {
+                modal.style.display = "flex";
+                modalImg.src = event.target.src;
+            }
+        });
+
+        closeModal.addEventListener('click', () => {
+            modal.style.display = "none";
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+
+        // Video Call Variables
+        let localStream;
+        let peerConnection;
+        let isCameraOn = true;
+        let isAudioOn = true;
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
         };
-        socket.emit('chat message', messageData);
-        messageInput.value = '';
-    }
-});
 
-// Handle Image Upload
-document.getElementById('image-button').addEventListener('click', () => {
-    document.getElementById('image-input').click();
-});
+        // Toggle Camera Button
+        document.getElementById('toggle-camera').addEventListener('click', () => {
+            if (localStream) {
+                const videoTracks = localStream.getVideoTracks();
+                videoTracks.forEach(track => {
+                    track.enabled = !track.enabled;
+                });
+                isCameraOn = !isCameraOn;
+                const button = document.getElementById('toggle-camera');
+                button.classList.toggle('camera-off');
+                button.innerHTML = isCameraOn ? 
+                    '<i class="fas fa-video"></i>' : 
+                    '<i class="fas fa-video-slash"></i>';
+            }
+        });
 
-document.getElementById('image-input').addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const imageData = {
-                username: username,
-                image: reader.result,
-                timestamp: new Date().toLocaleTimeString(),
+        // Toggle Audio Button
+        document.getElementById('toggle-audio').addEventListener('click', () => {
+            if (localStream) {
+                const audioTracks = localStream.getAudioTracks();
+                audioTracks.forEach(track => {
+                    track.enabled = !track.enabled;
+                });
+                isAudioOn = !isAudioOn;
+                const button = document.getElementById('toggle-audio');
+                button.classList.toggle('audio-off');
+                button.innerHTML = isAudioOn ? 
+                    '<i class="fas fa-microphone"></i>' : 
+                    '<i class="fas fa-microphone-slash"></i>';
+            }
+        });
+
+        // Video Call Button
+        document.getElementById('video-call-button').addEventListener('click', async () => {
+            try {
+                // First get user media
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: true
+                });
+                
+                // Show local video immediately
+                const localVideo = document.getElementById('local-video');
+                localVideo.srcObject = localStream;
+                localVideo.play().catch(e => console.error('Error playing local video:', e));
+                document.getElementById('video-call-container').style.display = 'flex';
+
+                // Create peer connection
+                peerConnection = new RTCPeerConnection(configuration);
+
+                // Add local stream tracks to peer connection
+                localStream.getTracks().forEach(track => {
+                    console.log('Adding track to peer connection:', track.kind);
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Set up remote video handling
+                peerConnection.ontrack = (event) => {
+                    console.log('Received remote track:', event.track.kind);
+                    const remoteVideo = document.getElementById('remote-video');
+                    
+                    // Ensure we create a new MediaStream for the remote video
+                    if (!remoteVideo.srcObject) {
+                        const remoteStream = new MediaStream();
+                        remoteVideo.srcObject = remoteStream;
+                    }
+                    
+                    // Add the track to the remote stream
+                    const remoteStream = remoteVideo.srcObject;
+                    if (!remoteStream.getTracks().find(t => t.id === event.track.id)) {
+                        remoteStream.addTrack(event.track);
+                    }
+                    
+                    // Ensure the video plays
+                    remoteVideo.play().catch(e => console.error('Error playing remote video:', e));
+                };
+
+                // Handle connection state changes
+                peerConnection.onconnectionstatechange = (event) => {
+                    console.log('Connection state:', peerConnection.connectionState);
+                };
+
+                // Handle ICE connection state
+                peerConnection.oniceconnectionstatechange = (event) => {
+                    console.log('ICE connection state:', peerConnection.iceConnectionState);
+                };
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Sending ICE candidate');
+                        socket.emit('webrtc signal', {
+                            roomCode: roomCode,
+                            signal: { candidate: event.candidate },
+                            targetId: roomCode
+                        });
+                    }
+                };
+
+                // Create and send offer
+                const offer = await peerConnection.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true
+                });
+                
+                console.log('Setting local description (offer)');
+                await peerConnection.setLocalDescription(offer);
+
+                console.log('Sending video call request with offer');
+                socket.emit('video call request', {
+                    roomCode: roomCode,
+                    callerUsername: username,
+                    offer: offer
+                });
+
+            } catch (error) {
+                console.error('Error in video call setup:', error);
+                alert('Error setting up video call: ' + error.message);
+            }
+        });
+
+        // Handle Video Call Request
+        socket.on('video call request', async (data) => {
+            const callerName = document.getElementById('caller-name');
+            callerName.textContent = `${data.callerUsername} is calling...`;
+            
+            // Store the offer
+            window.pendingOffer = data.offer;
+            
+            // Show the call request with animation
+            const callRequest = document.getElementById('call-request');
+            callRequest.style.display = 'block';
+            
+            // Add a subtle sound effect for the call (optional)
+            const audio = new Audio('https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/audio/notification.mp3');
+            audio.play().catch(e => console.log('Audio play failed:', e));
+        });
+
+        // Accept Call
+        document.getElementById('accept-call').addEventListener('click', async () => {
+            try {
+                const callRequest = document.getElementById('call-request');
+                callRequest.style.display = 'none';
+                document.getElementById('video-call-container').style.display = 'flex';
+
+                // Get user media
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: true
+                });
+
+                // Show local video
+                const localVideo = document.getElementById('local-video');
+                localVideo.srcObject = localStream;
+                localVideo.play().catch(e => console.error('Error playing local video:', e));
+
+                // Create peer connection
+                peerConnection = new RTCPeerConnection(configuration);
+
+                // Add local stream tracks
+                localStream.getTracks().forEach(track => {
+                    console.log('Adding track to peer connection:', track.kind);
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Set up remote video handling
+                peerConnection.ontrack = (event) => {
+                    console.log('Received remote track:', event.track.kind);
+                    const remoteVideo = document.getElementById('remote-video');
+                    
+                    // Ensure we create a new MediaStream for the remote video
+                    if (!remoteVideo.srcObject) {
+                        const remoteStream = new MediaStream();
+                        remoteVideo.srcObject = remoteStream;
+                    }
+                    
+                    // Add the track to the remote stream
+                    const remoteStream = remoteVideo.srcObject;
+                    if (!remoteStream.getTracks().find(t => t.id === event.track.id)) {
+                        remoteStream.addTrack(event.track);
+                    }
+                    
+                    // Ensure the video plays
+                    remoteVideo.play().catch(e => console.error('Error playing remote video:', e));
+                };
+
+                // Handle connection state changes
+                peerConnection.onconnectionstatechange = (event) => {
+                    console.log('Connection state:', peerConnection.connectionState);
+                };
+
+                // Handle ICE connection state
+                peerConnection.oniceconnectionstatechange = (event) => {
+                    console.log('ICE connection state:', peerConnection.iceConnectionState);
+                };
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Sending ICE candidate');
+                        socket.emit('webrtc signal', {
+                            roomCode: roomCode,
+                            signal: { candidate: event.candidate },
+                            targetId: roomCode
+                        });
+                    }
+                };
+
+                // Set remote description from offer
+                console.log('Setting remote description (offer)');
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
+
+                // Create and send answer
+                console.log('Creating answer');
+                const answer = await peerConnection.createAnswer();
+                console.log('Setting local description (answer)');
+                await peerConnection.setLocalDescription(answer);
+
+                socket.emit('video call response', {
+                    roomCode: roomCode,
+                    accepted: true,
+                    calleeUsername: username,
+                    answer: answer
+                });
+
+            } catch (error) {
+                console.error('Error accepting video call:', error);
+                alert('Error accepting video call: ' + error.message);
+            }
+        });
+
+        // Handle WebRTC Signals
+        socket.on('webrtc signal', async (data) => {
+            try {
+                if (data.signal.candidate && peerConnection) {
+                    console.log('Received ICE candidate');
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal.candidate))
+                        .catch(e => console.error('Error adding ICE candidate:', e));
+                }
+            } catch (error) {
+                console.error('Error handling WebRTC signal:', error);
+            }
+        });
+
+        // Handle Video Call Accepted
+        socket.on('video call accepted', async (data) => {
+            try {
+                console.log('Call accepted, setting remote description (answer)');
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                console.log('Remote description set successfully');
+                document.getElementById('remote-user-name').textContent = data.calleeUsername;
+            } catch (error) {
+                console.error('Error in call accepted handler:', error);
+                alert('Error establishing video call connection: ' + error.message);
+            }
+        });
+
+        // End Call Button
+        document.getElementById('end-call').addEventListener('click', () => {
+            socket.emit('end video call', { roomCode: roomCode });
+            endVideoCall();
+        });
+
+        // Handle Video Call Ended
+        socket.on('video call ended', () => {
+            endVideoCall();
+            alert('Call ended');
+        });
+
+        // Helper function to end video call
+        function endVideoCall() {
+            console.log('Ending video call');
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('Stopped track:', track.kind);
+                });
+                localStream = null;
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            const localVideo = document.getElementById('local-video');
+            const remoteVideo = document.getElementById('remote-video');
+            
+            if (localVideo.srcObject) {
+                localVideo.srcObject = null;
+            }
+            if (remoteVideo.srcObject) {
+                remoteVideo.srcObject = null;
+            }
+
+            document.getElementById('video-call-container').style.display = 'none';
+            window.pendingOffer = null;
+            
+            // Reset button states
+            isCameraOn = true;
+            isAudioOn = true;
+            document.getElementById('toggle-camera').classList.remove('camera-off');
+            document.getElementById('toggle-audio').classList.remove('audio-off');
+            
+            console.log('Video call ended and cleaned up');
+        }
+
+        // Handle user leaving during call
+        socket.on('user left', (data) => {
+            if (document.getElementById('video-call-container').style.display === 'flex') {
+                endVideoCall();
+                alert(`${data.username} has left the call`);
+            }
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', 'system-message');
+            messageElement.innerHTML = `<em>${data.username} has left the chat</em>`;
+            document.getElementById('messages').appendChild(messageElement);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        });
+
+        // Update the reject call handler
+        document.getElementById('reject-call').addEventListener('click', () => {
+            const callRequest = document.getElementById('call-request');
+            callRequest.style.display = 'none';
+            socket.emit('video call response', {
                 roomCode: roomCode,
-                senderId: clientId
-            };          
-            socket.emit('image message', imageData);
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// Emoji Picker
-const emojiButton = document.getElementById('emoji-button');
-const emojiPicker = document.querySelector('emoji-picker');
-
-emojiButton.addEventListener('click', (event) => {
-    event.stopPropagation(); // Prevent the document click event from firing
-    emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
-});
-
-emojiPicker.addEventListener('emoji-click', (event) => {    
-    const input = document.getElementById('input');
-    input.value += event.detail.unicode;
-});
-document.getElementById('input').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent default Enter key behavior
-        sendMessage();
-        emojiPicker.style.display = 'none'; // Close the emoji picker after sending the message
-    }
-});
-
-
-
-
-// Function to send a message
-function sendMessage() {
-    const messageInput = document.getElementById('input');
-    const message = messageInput.value.trim();
-    if (message) {
-        const messageData = {
-            username: username,
-            message: message,
-            timestamp: new Date().toLocaleTimeString(),
-            roomCode: roomCode,
-            senderId: clientId
-        };
-        socket.emit('chat message', messageData);
-        messageInput.value = '';
-    }
-}
-
-
-
-// Event listener for the Enter key
-document.getElementById('input').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent default Enter key behavior
-        sendMessage();
-         
-    }
-});
-// Close emoji picker when clicking outside                                                                 
-document.addEventListener('click', (event) => {
-    if (!emojiPicker.contains(event.target) && event.target !== emojiButton) {
-        emojiPicker.style.display = 'none';
-    }
-});
-// Get the modal, image and close button
-const modal = document.getElementById("image-modal");
-const modalImg = document.getElementById("modal-image");
-const closeModal = document.getElementById("close-modal");
-
-// Add event listeners to chat images
-document.addEventListener('click', function(event) {
-    if (event.target.tagName === 'IMG' && event.target.closest('.message')) {
-        // Show modal and set the clicked image as the modal content
-        modal.style.display = "flex";
-        modalImg.src = event.target.src;
-    }
-});
-
-// Close modal when the user clicks on the close button
-closeModal.addEventListener('click', () => {
-    modal.style.display = "none";
-});
-
-// Close modal when clicking outside the image
-window.addEventListener('click', (event) => {
-    if (event.target === modal) {
-        modal.style.display = "none";
-    }
-});
-
-
+                accepted: false,
+                calleeUsername: username
+            });
+        });
     </script>
 </body>
 </html>

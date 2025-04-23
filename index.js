@@ -20,15 +20,23 @@ io.on('connection', (socket) => {
 
     // Handle room creation
     socket.on('create room', (code) => {
-        console.log('Creating room with code:', code); // Add logging
-        chatRooms[code] = { users: [], messages: [] }; // Store users and messages
+        console.log('Creating room with code:', code);
+        chatRooms[code] = { 
+            users: [], 
+            messages: [],
+            videoCall: {
+                active: false,
+                caller: null,
+                callee: null
+            }
+        };
         socket.join(code);
         socket.emit('joined room', code);
     });
 
     // Handle joining room
     socket.on('join room', (code, username) => {
-        console.log('User trying to join room:', code, 'with username:', username); // Add logging
+        console.log('User trying to join room:', code, 'with username:', username);
         if (chatRooms[code]) {
             chatRooms[code].users.push({ id: socket.id, username: username });
             socket.join(code);
@@ -41,10 +49,68 @@ io.on('connection', (socket) => {
                 senderId: socket.id
             });
         } else {
-            console.log('Room not found:', code); // Log when room is not found
+            console.log('Room not found:', code);
             socket.emit('error', 'Room not found');
         }
     });
+
+    // Handle video call request
+    socket.on('video call request', ({ roomCode, callerUsername, offer }) => {
+        const room = chatRooms[roomCode];
+        if (room && !room.videoCall.active) {
+            room.videoCall.active = true;
+            room.videoCall.caller = socket.id;
+            room.videoCall.offer = offer;
+            socket.to(roomCode).emit('video call request', {
+                callerId: socket.id,
+                callerUsername: callerUsername,
+                offer: offer
+            });
+        }
+    });
+
+    // Handle video call response
+    socket.on('video call response', ({ roomCode, accepted, calleeUsername, answer }) => {
+        const room = chatRooms[roomCode];
+        if (room && room.videoCall.active) {
+            if (accepted) {
+                room.videoCall.callee = socket.id;
+                io.to(room.videoCall.caller).emit('video call accepted', {
+                    calleeId: socket.id,
+                    calleeUsername: calleeUsername,
+                    answer: answer
+                });
+            } else {
+                room.videoCall.active = false;
+                room.videoCall.caller = null;
+                room.videoCall.offer = null;
+                io.to(room.videoCall.caller).emit('video call rejected', {
+                    calleeUsername: calleeUsername
+                });
+            }
+        }
+    });
+
+    // Handle video call end
+    socket.on('end video call', ({ roomCode }) => {
+        const room = chatRooms[roomCode];
+        if (room && room.videoCall.active) {
+            room.videoCall.active = false;
+            room.videoCall.caller = null;
+            room.videoCall.callee = null;
+            room.videoCall.offer = null;
+            io.to(roomCode).emit('video call ended');
+        }
+    });
+
+    // Handle WebRTC signaling
+    socket.on('webrtc signal', ({ roomCode, signal, targetId }) => {
+        socket.to(targetId).emit('webrtc signal', {
+            signal: signal,
+            senderId: socket.id
+        });
+    });
+
     socket.on('user left', ({ username, roomCode }) => {
         console.log(`${username} has left the room: ${roomCode}`);
     

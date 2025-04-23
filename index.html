@@ -577,15 +577,16 @@
         .video-container video {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             border-radius: 12px;
-            transform: scale(-1, 1); /* Mirror effect for selfie view */
+            transform: scale(-1, 1);
+            background-color: #1a1a1a;
         }
 
         .video-container.local-video-container {
             position: absolute;
             width: 280px;
-            height: 158px; /* 16:9 aspect ratio */
+            height: 158px;
             right: 20px;
             top: 20px;
             z-index: 2;
@@ -680,21 +681,34 @@
         @media (max-width: 768px) {
             .video-grid {
                 flex-direction: column;
-                height: calc(100vh - 80px);
-                padding: 10px;
-                gap: 10px;
+                height: 100vh;
+                padding: 0;
+                gap: 0;
+            }
+
+            .video-container {
+                height: 50vh;
+                border-radius: 0;
+            }
+
+            .video-container video {
+                object-fit: contain;
+                border-radius: 0;
             }
 
             .video-container.local-video-container {
-                width: 120px;
-                height: 68px;
-                right: 10px;
-                top: 10px;
+                position: relative;
+                width: 100%;
+                height: 50vh;
+                right: 0;
+                top: 0;
+                border: none;
             }
 
             .call-controls {
-                padding: 15px;
+                padding: 15px 10px;
                 gap: 15px;
+                background: rgba(0, 0, 0, 0.8);
             }
 
             .call-button {
@@ -703,9 +717,35 @@
                 font-size: 18px;
             }
 
-            .end-call {
-                width: 50px;
-                height: 50px;
+            .rotate-video {
+                display: block;
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                width: 40px;
+                height: 40px;
+                background: rgba(0, 0, 0, 0.5);
+                border-radius: 50%;
+                border: none;
+                color: white;
+                font-size: 20px;
+                z-index: 3;
+            }
+        }
+
+        @media (max-width: 768px) and (orientation: landscape) {
+            .video-grid {
+                flex-direction: row;
+            }
+
+            .video-container {
+                height: 100vh;
+                width: 50vw;
+            }
+
+            .video-container.local-video-container {
+                width: 50vw;
+                height: 100vh;
             }
         }
 
@@ -865,11 +905,17 @@
         <div class="call-status">Connected</div>
         <div class="video-grid">
             <div class="video-container remote-video-container">
-                <video id="remote-video" autoplay></video>
+                <video id="remote-video" autoplay playsinline></video>
+                <button class="rotate-video" id="rotate-remote">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
                 <div class="participant-name" id="remote-user-name"></div>
             </div>
             <div class="video-container local-video-container">
-                <video id="local-video" autoplay muted></video>
+                <video id="local-video" autoplay muted playsinline></video>
+                <button class="rotate-video" id="rotate-local">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
                 <div class="participant-name">You</div>
             </div>
         </div>
@@ -1472,6 +1518,134 @@
                 calleeUsername: username
             });
         });
+
+        // Add these variables at the top
+        let localVideoRotation = 0;
+        let remoteVideoRotation = 0;
+
+        // Update the video constraints
+        const videoConstraints = {
+            mobile: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: 'user', // or 'environment' for back camera
+                aspectRatio: { ideal: 1.7777777778 }
+            },
+            desktop: {
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                aspectRatio: { ideal: 1.7777777778 }
+            }
+        };
+
+        // Function to check if device is mobile
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // Update getUserMedia call in your video call initialization
+        async function initializeMediaStream() {
+            const constraints = {
+                video: isMobileDevice() ? videoConstraints.mobile : videoConstraints.desktop,
+                audio: true
+            };
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const localVideo = document.getElementById('local-video');
+                localVideo.srcObject = localStream;
+                await localVideo.play().catch(e => console.error('Error playing local video:', e));
+            } catch (error) {
+                console.error('Error getting user media:', error);
+                throw error;
+            }
+        }
+
+        // Add rotation handlers
+        document.getElementById('rotate-local').addEventListener('click', () => {
+            const video = document.getElementById('local-video');
+            localVideoRotation = (localVideoRotation + 90) % 360;
+            video.style.transform = `scale(-1, 1) rotate(${localVideoRotation}deg)`;
+        });
+
+        document.getElementById('rotate-remote').addEventListener('click', () => {
+            const video = document.getElementById('remote-video');
+            remoteVideoRotation = (remoteVideoRotation + 90) % 360;
+            video.style.transform = `rotate(${remoteVideoRotation}deg)`;
+        });
+
+        // Add camera switch function for mobile devices
+        async function switchCamera() {
+            if (!isMobileDevice()) return;
+
+            const currentFacingMode = videoConstraints.mobile.facingMode;
+            videoConstraints.mobile.facingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+            try {
+                // Stop all video tracks
+                localStream.getVideoTracks().forEach(track => track.stop());
+
+                // Get new stream with switched camera
+                const newStream = await navigator.mediaDevices.getUserMedia({
+                    video: videoConstraints.mobile,
+                    audio: true
+                });
+
+                // Replace video track in peer connection
+                const videoTrack = newStream.getVideoTracks()[0];
+                const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+                if (sender) {
+                    await sender.replaceTrack(videoTrack);
+                }
+
+                // Update local video
+                const localVideo = document.getElementById('local-video');
+                localStream = newStream;
+                localVideo.srcObject = newStream;
+            } catch (error) {
+                console.error('Error switching camera:', error);
+                alert('Failed to switch camera');
+            }
+        }
+
+        // Add switch camera button for mobile
+        if (isMobileDevice()) {
+            const switchCameraButton = document.createElement('button');
+            switchCameraButton.className = 'call-button';
+            switchCameraButton.innerHTML = '<i class="fas fa-camera-rotate"></i>';
+            switchCameraButton.onclick = switchCamera;
+            document.querySelector('.call-controls').appendChild(switchCameraButton);
+        }
+
+        // Update video handling for orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                const videos = document.querySelectorAll('video');
+                videos.forEach(video => {
+                    video.style.height = '100%';
+                    video.style.width = '100%';
+                });
+            }, 100);
+        });
+
+        // Update the peer connection video handling
+        peerConnection.ontrack = (event) => {
+            console.log('Received remote track:', event.track.kind);
+            const remoteVideo = document.getElementById('remote-video');
+            
+            if (!remoteVideo.srcObject) {
+                const remoteStream = new MediaStream();
+                remoteVideo.srcObject = remoteStream;
+                remoteVideo.setAttribute('playsinline', ''); // Important for iOS
+            }
+            
+            const remoteStream = remoteVideo.srcObject;
+            if (!remoteStream.getTracks().find(t => t.id === event.track.id)) {
+                remoteStream.addTrack(event.track);
+            }
+
+            remoteVideo.play().catch(e => console.error('Error playing remote video:', e));
+        };
     </script>
 </body>
 </html>

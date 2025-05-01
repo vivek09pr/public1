@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1170,120 +1171,85 @@
         });
 
         // Video Call Variables
-        let localStream;
-        let peerConnection;
-        let isCameraOn = true;
-        let isAudioOn = true;
-        const configuration = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
-                { 
-                    urls: 'turn:numb.viagenie.ca',
-                    username: 'webrtc@live.com',
-                    credential: 'muazkh'
-                },
-                {
-                    urls: 'turn:turn.bistri.com:80',
-                    username: 'homeo',
-                    credential: 'homeo'
-                }
-            ],
-            iceCandidatePoolSize: 10
-        };
-
-        // Function to create peer connection with better error handling
-        async function createPeerConnection() {
-            try {
-                peerConnection = new RTCPeerConnection(configuration);
-                
-                // Add connection state change handler
-                peerConnection.onconnectionstatechange = () => {
-                    console.log('Connection state:', peerConnection.connectionState);
-                    switch(peerConnection.connectionState) {
-                        case 'connected':
-                            console.log('Peers connected!');
-                            break;
-                        case 'disconnected':
-                        case 'failed':
-                            console.log('Connection failed or disconnected');
-                            endVideoCall();
-                            break;
-                        case 'closed':
-                            console.log('Connection closed');
-                            break;
-                    }
-                };
-
-                // Handle ICE connection state
-                peerConnection.oniceconnectionstatechange = () => {
-                    console.log('ICE connection state:', peerConnection.iceConnectionState);
-                    if (peerConnection.iceConnectionState === 'failed') {
-                        console.log('ICE connection failed, trying to restart ICE');
-                        peerConnection.restartIce();
-                    }
-                };
-
-                // Handle ICE gathering state
-                peerConnection.onicegatheringstatechange = () => {
-                    console.log('ICE gathering state:', peerConnection.iceGatheringState);
-                };
-
-                // Handle ICE candidates with better error handling
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        console.log('New ICE candidate:', event.candidate);
-                        socket.emit('webrtc signal', {
-                            roomCode: roomCode,
-                            signal: { candidate: event.candidate },
-                            targetId: roomCode
-                        });
-                    } else {
-                        console.log('ICE gathering complete');
-                    }
-                };
-
-                // Handle negotiation needed
-                peerConnection.onnegotiationneeded = async () => {
-                    try {
-                        console.log('Negotiation needed, creating offer');
-                        const offer = await peerConnection.createOffer({
-                            offerToReceiveAudio: true,
-                            offerToReceiveVideo: true
-                        });
-                        await peerConnection.setLocalDescription(offer);
-                        socket.emit('webrtc signal', {
-                            roomCode: roomCode,
-                            signal: { sdp: peerConnection.localDescription },
-                            targetId: roomCode
-                        });
-                    } catch (error) {
-                        console.error('Error in negotiation:', error);
-                    }
-                };
-
-                // Add local stream tracks
-                if (localStream) {
-                    localStream.getTracks().forEach(track => {
-                        console.log('Adding track to peer connection:', track.kind);
-                        peerConnection.addTrack(track, localStream);
-                    });
-                }
-
-                return peerConnection;
-            } catch (error) {
-                console.error('Error creating peer connection:', error);
-                throw error;
+   // Video Call Variables
+   let localStream;
+    let peerConnection;
+    let isCameraOn = true;
+    let isAudioOn = true;
+    const configuration = {
+        iceServers: [
+            // Free STUN servers
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            
+            // Free TURN servers (these may not always be available)
+            // Note: For production, you should use your own TURN server
+            { 
+                urls: 'turn:numb.viagenie.ca',
+                credential: 'muazkh',
+                username: 'webrtc@live.com'
+            },
+            { 
+                urls: 'turn:openrelay.metered.ca:80',
+                credential: 'openrelayproject',
+                username: 'openrelayproject'
+            },
+            { 
+                urls: 'turn:openrelay.metered.ca:443',
+                credential: 'openrelayproject',
+                username: 'openrelayproject'
+            },
+            { 
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                credential: 'openrelayproject',
+                username: 'openrelayproject'
             }
-        }
+        ],
+        iceCandidatePoolSize: 10,
+        iceTransportPolicy: 'all' // Try both relay and non-relay candidates
+    };
 
-        // Update the video call button handler
+
+        
+        // Toggle Camera Button
+        document.getElementById('toggle-camera').addEventListener('click', () => {
+            if (localStream) {
+                const videoTracks = localStream.getVideoTracks();
+                videoTracks.forEach(track => {
+                    track.enabled = !track.enabled;
+                });
+                isCameraOn = !isCameraOn;
+                const button = document.getElementById('toggle-camera');
+                button.classList.toggle('camera-off');
+                button.innerHTML = isCameraOn ? 
+                    '<i class="fas fa-video"></i>' : 
+                    '<i class="fas fa-video-slash"></i>';
+            }
+        });
+
+        // Toggle Audio Button
+        document.getElementById('toggle-audio').addEventListener('click', () => {
+            if (localStream) {
+                const audioTracks = localStream.getAudioTracks();
+                audioTracks.forEach(track => {
+                    track.enabled = !track.enabled;
+                });
+                isAudioOn = !isAudioOn;
+                const button = document.getElementById('toggle-audio');
+                button.classList.toggle('audio-off');
+                button.innerHTML = isAudioOn ? 
+                    '<i class="fas fa-microphone"></i>' : 
+                    '<i class="fas fa-microphone-slash"></i>';
+            }
+        });
+
+        // Video Call Button
         document.getElementById('video-call-button').addEventListener('click', async () => {
             try {
-                // Get user media
+                // First get user media
                 localStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         width: { ideal: 1280 },
@@ -1292,14 +1258,63 @@
                     audio: true
                 });
                 
-                // Show local video
+                // Show local video immediately
                 const localVideo = document.getElementById('local-video');
                 localVideo.srcObject = localStream;
                 localVideo.play().catch(e => console.error('Error playing local video:', e));
                 document.getElementById('video-call-container').style.display = 'flex';
 
                 // Create peer connection
-                peerConnection = await createPeerConnection();
+                peerConnection = new RTCPeerConnection(configuration);
+
+                // Add local stream tracks to peer connection
+                localStream.getTracks().forEach(track => {
+                    console.log('Adding track to peer connection:', track.kind);
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Set up remote video handling
+                peerConnection.ontrack = (event) => {
+                    console.log('Received remote track:', event.track.kind);
+                    const remoteVideo = document.getElementById('remote-video');
+                    
+                    // Ensure we create a new MediaStream for the remote video
+                    if (!remoteVideo.srcObject) {
+                        const remoteStream = new MediaStream();
+                        remoteVideo.srcObject = remoteStream;
+                    }
+                    
+                    // Add the track to the remote stream
+                    const remoteStream = remoteVideo.srcObject;
+                    if (!remoteStream.getTracks().find(t => t.id === event.track.id)) {
+                        remoteStream.addTrack(event.track);
+                    }
+                    
+                    // Ensure the video plays
+                    remoteVideo.play().catch(e => console.error('Error playing remote video:', e));
+                };
+
+                // Handle connection state changes
+                peerConnection.onconnectionstatechange = (event) => {
+                    console.log('Connection state:', peerConnection.connectionState);
+                };
+
+                // Handle ICE connection state
+                peerConnection.oniceconnectionstatechange = (event) => {
+                    console.log('ICE connection state:', peerConnection.iceConnectionState);
+                };
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Sending ICE candidate');
+                        socket.emit('webrtc signal', {
+                            roomCode: roomCode,
+                            signal: { candidate: event.candidate },
+                            targetId: roomCode
+                        });
+                    }
+                };
 
                 // Create and send offer
                 const offer = await peerConnection.createOffer({
@@ -1307,8 +1322,10 @@
                     offerToReceiveVideo: true
                 });
                 
+                console.log('Setting local description (offer)');
                 await peerConnection.setLocalDescription(offer);
 
+                console.log('Sending video call request with offer');
                 socket.emit('video call request', {
                     roomCode: roomCode,
                     callerUsername: username,
@@ -1318,11 +1335,27 @@
             } catch (error) {
                 console.error('Error in video call setup:', error);
                 alert('Error setting up video call: ' + error.message);
-                endVideoCall();
             }
         });
 
-        // Update the accept call handler
+        // Handle Video Call Request
+        socket.on('video call request', async (data) => {
+            const callerName = document.getElementById('caller-name');
+            callerName.textContent = `${data.callerUsername} is calling...`;
+            
+            // Store the offer
+            window.pendingOffer = data.offer;
+            
+            // Show the call request with animation
+            const callRequest = document.getElementById('call-request');
+            callRequest.style.display = 'block';
+            
+            // Add a subtle sound effect for the call (optional)
+            const audio = new Audio('https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/audio/notification.mp3');
+            audio.play().catch(e => console.log('Audio play failed:', e));
+        });
+
+        // Accept Call
         document.getElementById('accept-call').addEventListener('click', async () => {
             try {
                 const callRequest = document.getElementById('call-request');
@@ -1344,13 +1377,65 @@
                 localVideo.play().catch(e => console.error('Error playing local video:', e));
 
                 // Create peer connection
-                peerConnection = await createPeerConnection();
+                peerConnection = new RTCPeerConnection(configuration);
+
+                // Add local stream tracks
+                localStream.getTracks().forEach(track => {
+                    console.log('Adding track to peer connection:', track.kind);
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Set up remote video handling
+                peerConnection.ontrack = (event) => {
+                    console.log('Received remote track:', event.track.kind);
+                    const remoteVideo = document.getElementById('remote-video');
+                    
+                    // Ensure we create a new MediaStream for the remote video
+                    if (!remoteVideo.srcObject) {
+                        const remoteStream = new MediaStream();
+                        remoteVideo.srcObject = remoteStream;
+                    }
+                    
+                    // Add the track to the remote stream
+                    const remoteStream = remoteVideo.srcObject;
+                    if (!remoteStream.getTracks().find(t => t.id === event.track.id)) {
+                        remoteStream.addTrack(event.track);
+                    }
+                    
+                    // Ensure the video plays
+                    remoteVideo.play().catch(e => console.error('Error playing remote video:', e));
+                };
+
+                // Handle connection state changes
+                peerConnection.onconnectionstatechange = (event) => {
+                    console.log('Connection state:', peerConnection.connectionState);
+                };
+
+                // Handle ICE connection state
+                peerConnection.oniceconnectionstatechange = (event) => {
+                    console.log('ICE connection state:', peerConnection.iceConnectionState);
+                };
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Sending ICE candidate');
+                        socket.emit('webrtc signal', {
+                            roomCode: roomCode,
+                            signal: { candidate: event.candidate },
+                            targetId: roomCode
+                        });
+                    }
+                };
 
                 // Set remote description from offer
+                console.log('Setting remote description (offer)');
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
 
                 // Create and send answer
+                console.log('Creating answer');
                 const answer = await peerConnection.createAnswer();
+                console.log('Setting local description (answer)');
                 await peerConnection.setLocalDescription(answer);
 
                 socket.emit('video call response', {
@@ -1363,32 +1448,16 @@
             } catch (error) {
                 console.error('Error accepting video call:', error);
                 alert('Error accepting video call: ' + error.message);
-                endVideoCall();
             }
         });
 
-        // Update WebRTC signal handler
+        // Handle WebRTC Signals
         socket.on('webrtc signal', async (data) => {
             try {
                 if (data.signal.candidate && peerConnection) {
                     console.log('Received ICE candidate');
                     await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal.candidate))
                         .catch(e => console.error('Error adding ICE candidate:', e));
-                } else if (data.signal.sdp && peerConnection) {
-                    console.log('Received SDP');
-                    const desc = new RTCSessionDescription(data.signal.sdp);
-                    if (desc.type === 'offer') {
-                        await peerConnection.setRemoteDescription(desc);
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-                        socket.emit('webrtc signal', {
-                            roomCode: roomCode,
-                            signal: { sdp: peerConnection.localDescription },
-                            targetId: roomCode
-                        });
-                    } else if (desc.type === 'answer') {
-                        await peerConnection.setRemoteDescription(desc);
-                    }
                 }
             } catch (error) {
                 console.error('Error handling WebRTC signal:', error);
@@ -1612,3 +1681,4 @@
     </script>
 </body>
 </html>
+
